@@ -66,7 +66,6 @@ def check_b_smaller(a, b):
   """
   return a > b
 
-  
 def ConcatTwoColumns(c1, c2): 
   """Returns two columns like a tuple array.
   Input: a tuple array.
@@ -458,15 +457,21 @@ def show_analytics(data):
   Input: a data table.
   """
   print("Информация в графиках")
-  show_pie_count(data["Стоимость"], "Количество квестов по стоимости", "руб.")
-  show_pie_count(data["Число актёров"], "Количество квестов по числу актёров", "чел.")
-  show_pie_count(data["Уровень страха"], "Количество квестов по уровню страха")
-  show_pie_count(data["Уровень сложности"], "Количество квестов по уровню сложности")
-  show_pie_count(data["Рейтинг"].round(1), "Количество квестов по рейтингу")
+  if(check_in_name("Стоимость", data.columns)):
+    show_pie_count(data["Стоимость"], "Количество квестов по стоимости", "руб.")
+  if(check_in_name("Число актёров", data.columns)):
+    show_pie_count(data["Число актёров"], "Количество квестов по числу актёров", "чел.")
+  if(check_in_name("Уровень страха", data.columns)):
+    show_pie_count(data["Уровень страха"], "Количество квестов по уровню страха")
+  if(check_in_name("Уровень сложности", data.columns)):
+    show_pie_count(data["Уровень сложности"], "Количество квестов по уровню сложности")
+  if(check_in_name("Рейтинг", data.columns)):
+    show_pie_count(data["Рейтинг"].round(1), "Количество квестов по рейтингу")
   small_data = delete_rows_with_na_column(data, "Рассчитанный результат")
   draw_compare_result(small_data[["Название", "Стоимость", "Рассчитанный результат"]],\
                     "Название", "Сравнение реальной стоимости и полученного результата")
-  show_heat_map(data, "Название", "Стоимость", "Рейтинг",\
+  if(check_in_name("Рейтинг", data.columns)):
+    show_heat_map(data, "Название", "Стоимость", "Рейтинг",\
               "Зависимость стоимости и рейтинга друг от друга")
 #
 #Printing block
