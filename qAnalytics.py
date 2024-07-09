@@ -20,12 +20,9 @@ import seaborn as sns
 def fill_with_iterated_data(c, v):
   """Returns a column with Nan data filled with iterated one.
      Input: a column with data (series), a string with additional value.
-  Ex.of return: [Apple, fruit №2, orange, fruit №2, ...]
+  Ex.of return: [Apple, fruit №1, orange, fruit №3, ...]
   """
-  return c.where(
-      c.notnull(),
-      panda.Series([(v+str(i)) for i in c.index]),
-      axis=0)
+  return c.where(c.notnull(), [(v+str(i)) for i in c.index], axis=0)
 
 def fill_with_data(c, v):
   """Returns a column filled with value.
