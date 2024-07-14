@@ -5,15 +5,27 @@ import matplotlib.pyplot as plot
 import numpy as pie
 import math
 import os.path as path
-from collections import defaultdict
+from IPython.display import clear_output
 from sklearn.model_selection import train_test_split as tts
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.metrics import mean_absolute_error as mae
 from sklearn.metrics import mean_tweedie_deviance as mtd
 from sklearn.metrics import r2_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import f1_score
 import statsmodels.api as sm
 import seaborn as sns
+import re
 
 #Filling block
 #Corrects invalid data.
@@ -44,7 +56,7 @@ def fill_with_ceil_median(c):
 
 def fill_with_ceil_median_two_columns(two_c_s, be_bigger=False):
   """Returns two interconnected columns where Nan of the first column
-     should be filled with either bigger or smaller value than 
+     should be filled with either bigger or smaller value than
      the second one contains (or be filled with a ceiled median).
   Input: two columns with data (series), condition: should value be bigger or not.
   """
@@ -63,7 +75,7 @@ def check_b_smaller(a, b):
   """
   return a > b
 
-def ConcatTwoColumns(c1, c2): 
+def concat_two_columns(c1, c2):
   """Returns two columns like a tuple array.
   Input: a tuple array.
   """
@@ -90,9 +102,9 @@ def fill_data(c_names, no_c_data):
   if(check_in_name(c_names[1], no_c_data.columns) and
      check_in_name(c_names[2], no_c_data.columns)):
        no_c_data[c_names[1]] = fill_with_ceil_median_two_columns(
-        ConcatTwoColumns(no_c_data[c_names[1]], no_c_data[c_names[2]]), True)
+        concat_two_columns(no_c_data[c_names[1]], no_c_data[c_names[2]]), True)
        no_c_data[c_names[2]] = fill_with_ceil_median_two_columns(
-        ConcatTwoColumns(no_c_data[c_names[2]], no_c_data[c_names[1]]))
+        concat_two_columns(no_c_data[c_names[2]], no_c_data[c_names[1]]))
   elif (check_in_name(c_names[1], no_c_data.columns)):
     fill_with_ceil_median(no_c_data[c_names[1]])
   elif (check_in_name(c_names[2], no_c_data.columns)):
@@ -121,9 +133,9 @@ def exclusion_generator(base_list, to_excludes):
     if item not in to_excludes:
       yield item
 
-def exclude_incorrect_info(data, list_string_to_null_c, not_int_c): 
+def exclude_incorrect_info(data, list_string_to_null_c, not_int_c):
   """Returns list with types applied to each column.
-  Input: a data table, list of column names where string is to be Nan, 
+  Input: a data table, list of column names where string is to be Nan,
   list of column names that are not integer.
   """
   for c in list_string_to_null_c:
@@ -172,7 +184,7 @@ def delete_uninformative_columns(data, percent):
   return data.dropna(thresh=math.ceil(len(data.index) * percent / 100), axis=1)
 
 def delete_empty_data(data):
-  """Returns a table where all uniformative data is deleted and 
+  """Returns a table where all uniformative data is deleted and
      a table without string data.
   Input: a data table.
   """
@@ -184,7 +196,7 @@ def delete_empty_data(data):
   return data, no_c_s_data
 
 def if_not_enough_data(data, min_n_columns, min_n_rows, must_columns):
-  """Returns true if some of conditions are not met: number of rows, 
+  """Returns true if some of conditions are not met: number of rows,
     number of columns, required columns.
   Input: a data table, a minimum number of columns, a minimum number of rows,
   names of required columns.
@@ -230,7 +242,7 @@ def do_main_read_work(filename):
   c = ["Название", "Минимальное число человек", "Максимальное число человек",\
        "Уровень сложности", "Уровень страха", "Число актёров", "Возраст",\
        "Рейтинг", "Количество команд", "Длительность", "Стоимость"]
-  data = panda.read_csv(filename, sep='|', header=None, names=c)
+  data = panda.read_csv(filename, sep=';', header=None, names=c, encoding = "cp1251")
   data = exclude_incorrect_info(data, ["Рейтинг"], ["Название", "Рейтинг"])
   data, no_c_data = delete_empty_data(data)
   if(if_not_enough_data(no_c_data, 5, 5, "Стоимость")):
@@ -253,10 +265,17 @@ def train_module(data, target_name, excluded_c_names):
   target = data[target_name]
   features_train, features_test, target_train, target_test = \
       tts(features, target, test_size = 0.25)
+  ss = StandardScaler()
+  features_train = ss.fit_transform(features_train)
+  features_test = ss.transform(features_test)
+  target_train = pie.array(target_train)
   model = LinearRegression(positive=True)
   model = model.fit(features_train, target_train)
-  result = model.predict(features_test)
-  return model, features_train, target_train, target_test, result
+  result = predict_model_result(model, features_test)
+  return model, features_train, features_test, target_train, target_test, result
+
+def predict_model_result(model, features):
+  return model.predict(features)
 #
 
 #Assessing block
@@ -277,17 +296,17 @@ def get_coeff_correlation(model):
     equation += f" + ({coef} * X{i+1})"
   print(f"Уравнение линейной регрессии: {equation}.")
 
-def get_p_value(features_train, target_train):
+def get_p_value(c_names, features_train, target_train):
   """Outputs features that are most valued for the result.
   Input: features list, target data list.
   """
   print("Значимость признаков:")
   features_train = sm.add_constant(features_train)
   smmodel = sm.OLS(target_train, features_train).fit()
-  if(not smmodel.pvalues.isnull().any()):
+  if(smmodel.pvalues.sum() != pie.nan):
     for i, p_value in enumerate(smmodel.pvalues[1:]):
       print(f"Признак {i+1}: {p_value}")
-    print(f"Наиболее значимый признак - {smmodel.pvalues.index[smmodel.pvalues == min(smmodel.pvalues)][0]}.")
+    print(f"Наиболее значимый признак - {c_names[list(smmodel.pvalues).index(min(smmodel.pvalues[1:]))]}.")
   else:
     print("Недостаточно данных для анализа значимости признаков.")
 
@@ -314,7 +333,7 @@ def check_mpd(target_train, target_test, result, false_model_result):
 
 def state_for_the_record(name, short_name, check_data):
   """Outputs the result of metrics.
-  Input: a metric name, a shorten metric name, 
+  Input: a metric name, a shorten metric name,
          checked data (real and fake model results in a tuple).
   """
   print(f"Проверка расчётом {name} показала, что модель ", end='')
@@ -348,15 +367,15 @@ def get_false_model_result(target_train, target_test):
   """
   return [target_train.mean()] * len(target_test)
 
-def check_correctness(model, features_train, target_train, target_test, result):
+def check_correctness(model, c_names, features_train, target_train, target_test, result):
   """Outputs whole assessment check results.
-  Input: a trained model, features used for training, 
+  Input: a trained model, features used for training,
          target data used for training, used for testing, real result.
   """
   print("Проверка результатов модели:")
   get_coeff_correlation(model)
   print("*")
-  get_p_value(features_train, target_train)
+  get_p_value(c_names, features_train, target_train)
   print("*")
   falsemodelresult = get_false_model_result(target_train, target_test)
   state_for_the_record("cреднеквадратичной ошибки", "MSE",\
@@ -394,7 +413,7 @@ def check_list_contained(a, b):
   Input: two arrays.
   """
   for i in range(len(b)):
-    if pie.array_equal(a, b[i:i+len(a)]): 
+    if pie.array_equal(a, b[i:i+len(a)]):
       return True
   return False
 
@@ -419,16 +438,16 @@ def draw_compare_result(data, main_c_name, name):
 
 def show_pie_count(c, name, shorte=""):
   """Draws a pie chart based on the counting of data.
-  Input: a column to cound data in, name of the graph, 
+  Input: a column to cound data in, name of the graph,
          a shorten name of values to count.
   """
   fig, ax = plot.subplots()
   countc = c.value_counts()
   countc = countc.iloc[pie.lexsort([-countc.index, -countc.values])]
-  ax.pie(countc, shadow = False, startangle = 90)
+  ax.pie(countc, shadow=False, startangle=90)
   ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
   fig = plot.gcf()
-  fig.set_size_inches(5,5)
+  fig.set_size_inches(5, 5)
   fig.suptitle(name, fontsize=16)
   circle = plot.Circle(xy=(0,0), radius=0.5, facecolor='white')
   plot.gca().add_artist(circle)
@@ -441,13 +460,16 @@ def show_pie_count(c, name, shorte=""):
 
 def show_heat_map(data, id_name, c_name, v_name, name):
   """Draws a heat map based on three parameters.
-  Input: a data table, an index column, a basic column, a column with main values, 
+  Input: a data table, an index column, a basic column, a column with main values,
          a name of the graph.
   """
   glue = data.pivot(index=id_name, columns=c_name, values=v_name)
   fig, ax = plot.subplots(figsize=(len(data)/4, len(data)/4))
-  plot.suptitle(name)
-  sns.heatmap(glue, square=True, linecolor=get_random_colours(1), linewidth=.5)
+  plot.title(name, pad=20)
+  sns.set(font_scale=1.2)
+  sns.heatmap(glue, square=True, linecolor=get_random_colours(1), linewidth=.5, \
+              annot=True, annot_kws={"fontsize":8})
+  plot.show()
 
 def show_analytics(data):
   """Outputs analytics.
@@ -471,6 +493,7 @@ def show_analytics(data):
     show_heat_map(data, "Название", "Стоимость", "Рейтинг",\
               "Зависимость стоимости и рейтинга друг от друга")
 #
+
 #Printing block
 #Adds style to data.
 def output_data(data):
@@ -485,6 +508,117 @@ def output_data(data):
   display(data)
 #
 
+#Questioning block
+#Suggests user to check his quest's cost.
+def is_string(s):
+  """Checks if string is not empty.
+  Input: a string.
+  """
+  return to_string(s) != ""
+
+def is_float(s, min=1, max=0):
+  """Checks if string can be converted to float.
+  Input: a string, required minimum and maximum.
+  """
+  pattern = r"[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?"
+  match = re.match(pattern, s)
+  return bool(match) and check_ulimits(s, min, max)
+
+def is_uinteger(s, min=1, max=0):
+  """Checks if string can be converted to unsigned integer.
+  Input: a string, required minimum and maximum.
+  """
+  return s.isnumeric() and check_ulimits(s, min, max)
+
+def check_ulimits(s, min=0, max=0):
+  """Checks if number is within limits.
+  Input: a number, required minimum and maximum.
+  """
+  return (max == 0 or float(s) <= max) and (min == 0 or float(s) >= min)
+
+def to_int(s):
+  """Converts string to integer.
+  Input: a string.
+  """
+  return int(s)
+
+def to_float(s):
+  """Converts string to float.
+  Input: a string.
+  """
+  return float(s.replace(',', '.', 1))
+
+def to_string(s):
+  """Trips string (converts to string).
+  Input: an object.
+  """
+  return str(s).strip()
+
+def ask_for_data(cdata_t):
+  """Fills table according to user's data.
+  Input: a list with columns' names with types.
+  """
+  new_data = panda.DataFrame(index=[0])
+  for c in exclusion_generator(cdata_t.keys(), ["Стоимость", "Рассчитанный результат"]):
+    incorrect_data = True
+    while(incorrect_data):
+      print(f"Введите {c.lower()}, пожалуйста.")
+      field = input()
+      if(cdata_t[c] == pie.int64 and (is_uinteger(field))):
+        if(c == "Максимальное число человек"):
+          if("Минимальное число человек" in new_data.keys() and
+           is_uinteger(field, new_data.loc[0]["Минимальное число человек"], 0)):
+           new_data[c] = to_int(field)
+          else:
+            print("Ошибка. Максимальное число человек меньше минимального.")
+        else:
+          new_data[c] = to_int(field)
+      elif(cdata_t[c] == pie.float32 and is_float(field, 0, 10)):
+        new_data[c] = to_float(field)
+      elif(cdata_t[c] == "string" and is_string(field)):
+        new_data[c] = to_string(field)
+      else:
+        print("Ошибка. Введённые данные не соответствуют формату. Пожалуйста, повторите ввод.")
+      if(check_in_name(c, list(new_data.columns))):
+        incorrect_data = False
+  return new_data
+
+def ask_for_q(model, data_types):
+  print("Анализ собственного квеста:")
+  entered_q = ask_for_data(data_types)
+  q_name = entered_q["Название"]
+  entered_q = delete_column(entered_q, "Название")
+  ss = StandardScaler()
+  entered_q = ss.fit_transform(entered_q)
+  predicted_cost = predict_model_result(model, entered_q)
+  print(f"Стоимость квеста от Вашей компании: {pie.round(predicted_cost[0])} руб.")
+#
+
+#Classificating block
+#Starts classification.
+def show_importance(c_names, x_train, y_train):
+  """Shows features with their importance according to Random Forest Classification.
+  Input: a list of column names, data used for training, answers to the result.
+  """
+  rfc = RandomForestClassifier()
+  rfc.fit(x_train, y_train)
+  feats = {}
+  for feature, importance in zip(c_names, rfc.feature_importances_):
+    feats[feature] = importance
+  importances = panda.DataFrame.from_dict(feats, orient="index").rename(columns={0: "Значимость"})
+  importances = importances.sort_values(by="Значимость", ascending=False)
+  importances = importances.reset_index()
+  importances = importances.rename(columns={"index": "Характеристика"})
+  fig, ax = plot.subplots()
+  fig.set_size_inches(8, 5)
+  sns.barplot(x=importances["Значимость"], y=importances["Характеристика"], data=importances, color=get_random_colours(1)[0])
+  plot.xlabel("Значимость", fontsize=15, weight="bold")
+  plot.ylabel("Характеристика", fontsize=15, weight="bold")
+  plot.title("Значимость характеристик", fontsize=20, weight="bold")
+  plot.show()
+  display(importances)
+#
+
 #Main block
 #Runs programme.
 def main():
@@ -493,12 +627,14 @@ def main():
   if check_file_exists(filename):
     boolbool, data = do_main_read_work(filename) #qs.txt
     if(boolbool):
-      model, features_train, target_train, target_test, result =\
+      model, features_train, features_test, target_train, target_test, result =\
       train_module(data, "Стоимость", ["Название"])
       data = add_data_to_output(data, target_test, "Рассчитанный результат", result)
       output_data(data)
-      check_correctness(model, features_train, target_train, target_test, result)
       show_analytics(data)
+      check_correctness(model, data.columns, features_train, target_train, target_test, result)
+      show_importance(data.columns, features_train, target_train)
+      ask_for_q(model, data.dtypes)
   else: print("Такого файла не существует. \
                Пожалуйста, перезапустите программу и попробуйте ввести другое название.")
 
