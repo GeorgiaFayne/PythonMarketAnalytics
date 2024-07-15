@@ -5,24 +5,14 @@ import matplotlib.pyplot as plot
 import numpy as pie
 import math
 import os.path as path
-from IPython.display import clear_output
 from sklearn.model_selection import train_test_split as tts
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.metrics import mean_absolute_error as mae
 from sklearn.metrics import mean_tweedie_deviance as mtd
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import LinearRegression
-from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import f1_score
 import statsmodels.api as sm
 import seaborn as sns
 import re
@@ -192,7 +182,7 @@ def delete_empty_data(data):
   data = delete_uninformative_rows(data, 5)  # Characteristics №6 can be added based on other info.
   no_c_s_data = delete_column(data, "Название")
   no_c_s_data = delete_uninformative_columns(no_c_s_data, 75)
-  no_c_s_data.insert(0, 'Название', data["Название"])
+  no_c_s_data.insert(0, "Название", data["Название"])
   return data, no_c_s_data
 
 def if_not_enough_data(data, min_n_columns, min_n_rows, must_columns):
@@ -264,7 +254,7 @@ def train_module(data, target_name, excluded_c_names):
   features = delete_column(data, target_name)
   target = data[target_name]
   features_train, features_test, target_train, target_test = \
-      tts(features, target, test_size = 0.25)
+      tts(features, target, test_size=0.25)
   ss = StandardScaler()
   features_train = ss.fit_transform(features_train)
   features_test = ss.transform(features_test)
@@ -285,7 +275,7 @@ def mape(actual, pred):
      or mean absolute percentage deviation (MAPD).
   Input: actual and predicted values.
   """
-  return pie.mean(pie.abs((actual - pred) / actual))
+  return pie.mean(pie.abs((actual - pred)/actual))
 
 def get_coeff_correlation(model):
   """Outputs linear regression equation.
@@ -379,13 +369,13 @@ def check_correctness(model, c_names, features_train, target_train, target_test,
   print("*")
   falsemodelresult = get_false_model_result(target_train, target_test)
   state_for_the_record("cреднеквадратичной ошибки", "MSE",\
-                    check_mse(target_train, target_test, result, falsemodelresult))
+                       check_mse(target_train, target_test, result, falsemodelresult))
   print("*")
   state_for_the_record("средней абсолютной ошибки", "MAE",\
-                    check_mae(target_train, target_test, result, falsemodelresult))
+                       check_mae(target_train, target_test, result, falsemodelresult))
   print("*")
   state_for_the_record("среднего отклонения Пуассона", "MPD",\
-                    check_mpd(target_train, target_test, result, falsemodelresult))
+                       check_mpd(target_train, target_test, result, falsemodelresult))
   print("*")
   check_r2(target_test, result)
   print("*")
@@ -400,7 +390,7 @@ def add_data_to_output(data, target_test, column_name, result):
   for index, row in data.iterrows():
     if(index in target_test.index):
       data.at[index, column_name] = \
-        round(result[target_test.index.get_loc(index)], 2)
+          round(result[target_test.index.get_loc(index)], 2)
     else:
       data.at[index, column_name] = pie.nan
   return data
@@ -413,7 +403,7 @@ def check_list_contained(a, b):
   Input: two arrays.
   """
   for i in range(len(b)):
-    if pie.array_equal(a, b[i:i+len(a)]):
+    if pie.array_equal(a, b[i: i+len(a)]):
       return True
   return False
 
@@ -445,11 +435,11 @@ def show_pie_count(c, name, shorte=""):
   countc = c.value_counts()
   countc = countc.iloc[pie.lexsort([-countc.index, -countc.values])]
   ax.pie(countc, shadow=False, startangle=90)
-  ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+  ax.axis("equal")  # Equal aspect ratio ensures that pie is drawn as a circle.
   fig = plot.gcf()
   fig.set_size_inches(5, 5)
   fig.suptitle(name, fontsize=16)
-  circle = plot.Circle(xy=(0,0), radius=0.5, facecolor='white')
+  circle = plot.Circle(xy=(0,0), radius=0.5, facecolor="white")
   plot.gca().add_artist(circle)
   plot.legend(
       labels = [f'{pie.round(x, 2)} {shorte} - {round(countc[x]/len(c)*100,1)}%'
@@ -501,10 +491,10 @@ def output_data(data):
   Input: a data table.
   """
   print("Полученные данные:")
-  panda.set_option('display.max_rows', None)
-  panda.set_option('display.max_columns', None)
-  panda.set_option('display.width', 800)
-  panda.set_option('display.colheader_justify', 'center')
+  panda.set_option("display.max_rows", None)
+  panda.set_option("display.max_columns", None)
+  panda.set_option("display.width", 800)
+  panda.set_option("display.colheader_justify", "center")
   display(data)
 #
 
@@ -611,7 +601,8 @@ def show_importance(c_names, x_train, y_train):
   importances = importances.rename(columns={"index": "Характеристика"})
   fig, ax = plot.subplots()
   fig.set_size_inches(8, 5)
-  sns.barplot(x=importances["Значимость"], y=importances["Характеристика"], data=importances, color=get_random_colours(1)[0])
+  sns.barplot(x=importances["Значимость"], y=importances["Характеристика"],\
+              data=importances, color=get_random_colours(1)[0])
   plot.xlabel("Значимость", fontsize=15, weight="bold")
   plot.ylabel("Характеристика", fontsize=15, weight="bold")
   plot.title("Значимость характеристик", fontsize=20, weight="bold")
@@ -625,10 +616,10 @@ def main():
   """Runs programme."""
   filename = write_file_name()
   if check_file_exists(filename):
-    boolbool, data = do_main_read_work(filename) #qs.txt
+    boolbool, data = do_main_read_work(filename)  # qs.txt
     if(boolbool):
       model, features_train, features_test, target_train, target_test, result =\
-      train_module(data, "Стоимость", ["Название"])
+          train_module(data, "Стоимость", ["Название"])
       data = add_data_to_output(data, target_test, "Рассчитанный результат", result)
       output_data(data)
       show_analytics(data)
