@@ -180,7 +180,7 @@ def delete_empty_data(data):
   """
   data = delete_rows_with_na_column(data, "Стоимость")
   data = delete_uninformative_rows(data, 5)  # Characteristics №6 can be added based on other info.
-  no_c_s_data = delete_column(data, "Название")
+  no_c_s_data = delete_column(data, "Название")  # Data table without string in it (only numbers).
   no_c_s_data = delete_uninformative_columns(no_c_s_data, 75)
   no_c_s_data.insert(0, "Название", data["Название"])
   return data, no_c_s_data
@@ -234,7 +234,7 @@ def do_main_read_work(filename):
        "Рейтинг", "Количество команд", "Длительность", "Стоимость"]
   data = panda.read_csv(filename, sep=';', header=None, names=c, encoding = "cp1251")
   data = exclude_incorrect_info(data, ["Рейтинг"], ["Название", "Рейтинг"])
-  data, no_c_data = delete_empty_data(data)
+  data, no_c_data = delete_empty_data(data)  # full data and data only in numbers
   if(if_not_enough_data(no_c_data, 5, 5, "Стоимость")):
     print("Недостаточно данных. Пожалуйста, проверьте, все ли данные верны.")
     return False, no_c_data
@@ -619,13 +619,13 @@ def main():
     boolbool, data = do_main_read_work(filename)  # qs.txt
     if(boolbool):
       model, features_train, features_test, target_train, target_test, result =\
-          train_module(data, "Стоимость", ["Название"])
+          train_module(data, "Стоимость", ["Название"])  # Training block.
       data = add_data_to_output(data, target_test, "Рассчитанный результат", result)
-      output_data(data)
-      show_analytics(data)
-      check_correctness(model, data.columns, features_train, target_train, target_test, result)
-      show_importance(data.columns, features_train, target_train)
-      ask_for_q(model, data.dtypes)
+      output_data(data)  # Printing table block.
+      show_analytics(data)  # Drawing diagrams block.
+      check_correctness(model, data.columns, features_train, target_train, target_test, result)  # Showing train result block.
+      show_importance(data.columns, features_train, target_train)  # Printing diagram with important features block.
+      ask_for_q(model, data.dtypes)  # Getting price for user's quest block.
   else: print("Такого файла не существует. \
                Пожалуйста, перезапустите программу и попробуйте ввести другое название.")
 
